@@ -41,7 +41,7 @@
 #include "bhv_set_play.h"
 #include "bhv_set_play_kick_in.h"
 #include "bhv_set_play_indirect_free_kick.h"
-
+#include "bhv_basic_move.h"
 #include "bhv_custom_before_kick_off.h"
 
 #include "view_tactical.h"
@@ -209,6 +209,10 @@ SamplePlayer::actionImpl()
                   << std::endl;
     }
 
+    if (this->world().gameMode().type() == GameMode::KickOff_)
+    {
+        std::cout<<"We are going to Kick_off ";
+    }
     //
     // special situations (tackle, objects accuracy, intention...)
     //
@@ -218,11 +222,31 @@ SamplePlayer::actionImpl()
                       __FILE__": preprocess done" );
         return;
     }
-
+    if (this->world().gameMode().type() == GameMode::PlayOn)
+    {
+        if(!this->world().self().goalie())
+        {
+            bool kickable = this->world().self().isKickable();
+            if (this->world().teammatesFromBall().front()->distFromBall()
+            < this->world().ball().distFromSelf())
+            {
+                kickable = false;
+            }
+            if ( kickable )
+            {
+                std::cout<<"cycle = "<<this->world().time().cycle()<<" going to offensive"<<std::endl;
+                Bhv_BasicOffensiveKick().execute( this );
+            }
+            else
+            {
+                std::cout<<"cycle = "<<this->world().time().cycle()<<" going to basicmove"<<std::endl;
+                Bhv_BasicMove().execute( this );
+            }  
+        }
+    }
     //
     // decision Make
     //
-    
     if (Bhv_BasicOffensiveKick().execute( this ))
     {
         dlog.addText( Logger::TEAM,
@@ -491,12 +515,12 @@ SamplePlayer::doPreprocess()
     {
         dlog.addText( Logger::TEAM,
                       __FILE__": before_kick_off" );
-        Vector2D move_point =  Strategy::i().getHomePosition( wm, wm.self().unum() );
+        Vector2D move_point =  Strategy::i().getHomePosition( wm, wm.self().unum() );        
         Bhv_CustomBeforeKickOff( move_point ).execute( this );
         this->setViewAction( new View_Tactical() );
         return true;
     }
-
+    
     //
     // self localization error
     //
@@ -504,6 +528,7 @@ SamplePlayer::doPreprocess()
     {
         dlog.addText( Logger::TEAM,
                       __FILE__": invalid my pos" );
+        std::cout<<"cycle = "<<wm.time().cycle()<<" INvalid";
         Bhv_Emergency().execute( this ); // includes change view
         return true;
     }

@@ -75,6 +75,27 @@ Strategy::instance()
 
 Vector2D Strategy::getHomePosition(const rcsc::WorldModel &wm, int self_unum)
 {
+    //If it is before kick_off for jumping to it intialize possition
+    if ( wm.gameMode().type() == GameMode::BeforeKickOff
+         || wm.gameMode().type() == GameMode::AfterGoal_ )
+    {
+        std::vector<Vector2D> KickOffPosition(12);
+        KickOffPosition[1] = Vector2D(-52,0);
+        KickOffPosition[2] = Vector2D(-30,-10);
+        KickOffPosition[3] = Vector2D(-30,10);
+        KickOffPosition[4] = Vector2D(-30,-20);
+        KickOffPosition[5] = Vector2D(-30,20);
+        KickOffPosition[6] = Vector2D(-17,0);
+        KickOffPosition[7] = Vector2D(-15,-15);
+        KickOffPosition[8] = Vector2D(-15,15);
+        KickOffPosition[9] = Vector2D(-11,0);
+        KickOffPosition[10] = Vector2D(-5,-20);
+        KickOffPosition[11] = Vector2D(-5,20);
+        Vector2D move_point =  KickOffPosition.at( self_unum );
+        dlog.addCircle(Logger::MARK,move_point,0.5,0,0,255,1);
+        return move_point;
+    }
+
     int ball_step = 0;
     if (wm.gameMode().type() == GameMode::PlayOn || wm.gameMode().type() == GameMode::GoalKick_)
     {
@@ -141,7 +162,6 @@ Vector2D Strategy::getHomePosition(const rcsc::WorldModel &wm, int self_unum)
             }
         }
     }
-
     return positions.at(self_unum);
 }
 
