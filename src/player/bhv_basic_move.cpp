@@ -92,9 +92,7 @@ Bhv_BasicMove::execute( PlayerAgent * agent )
     }
     
     const Vector2D target_point = Strategy::i().getHomePosition( wm, wm.self().unum() );
-    dlog.addCircle(Logger::MARK , target_point , 1 , 255,0,255,1);
     const double dash_power = Strategy::get_normal_dash_power( wm );
-    std::cout<<"hello i am in basic move cycle = "<<wm.time().cycle()<<" i = "<<wm.self().unum()<<" "<<target_point<<std::endl;
     double dist_thr = wm.ball().distFromSelf() * 0.1;
     if ( dist_thr < 1.0 ) dist_thr = 1.0;
 

@@ -162,6 +162,7 @@ Vector2D Strategy::getHomePosition(const rcsc::WorldModel &wm, int self_unum)
             }
         }
     }
+    dlog.addCircle(Logger::MARK,positions.at(self_unum),0.5,0,0,255,1);
     return positions.at(self_unum);
 }
 

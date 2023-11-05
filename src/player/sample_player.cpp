@@ -44,6 +44,10 @@
 #include "bhv_basic_move.h"
 #include "bhv_custom_before_kick_off.h"
 
+#include "bhv_goalie_basic_move.h"
+#include "bhv_goalie_chase_ball.h"
+#include "bhv_goalie_free_kick.h"
+
 #include "view_tactical.h"
 
 #include "intention_receive.h"
@@ -57,6 +61,7 @@
 #include "basic_actions/neck_turn_to_ball_or_scan.h"
 #include "basic_actions/view_synch.h"
 #include "basic_actions/kick_table.h"
+#include "basic_actions/body_clear_ball.h"
 
 #include <rcsc/formation/formation.h>
 #include <rcsc/player/intercept_table.h>
@@ -202,6 +207,7 @@ SamplePlayer::actionImpl()
 {
     if ( this->audioSensor().trainerMessageTime() == world().time() )
     {
+        dlog.addText(Logger::MARK,"1");
         std::cerr << world().ourTeamName() << ' ' << world().self().unum()
                   << ' ' << world().time()
                   << " receive trainer message["
@@ -209,23 +215,60 @@ SamplePlayer::actionImpl()
                   << std::endl;
     }
 
-    if (this->world().gameMode().type() == GameMode::KickOff_)
-    {
-        std::cout<<"We are going to Kick_off ";
-    }
     //
     // special situations (tackle, objects accuracy, intention...)
     //
     if ( doPreprocess() )
     {
+        dlog.addText(Logger::MARK,"2");
         dlog.addText( Logger::TEAM,
                       __FILE__": preprocess done" );
         return;
+    }
+    //goalie 
+    if (this->world().self().goalie())
+    {
+        static const Rect2D our_penalty( Vector2D( -ServerParam::i().pitchHalfLength(),
+                                               -ServerParam::i().penaltyAreaHalfWidth() + 1.0 ),
+                                     Size2D( ServerParam::i().penaltyAreaLength() - 1.0,
+                                             ServerParam::i().penaltyAreaWidth() - 2.0 ) );
+        if ( this->world().time().cycle()
+         > this->world().self().catchTime().cycle() + ServerParam::i().catchBanCycle()
+         && this->world().ball().distFromSelf() < ServerParam::i().catchableArea() - 0.05
+         && our_penalty.contains( this->world().ball().pos() ) )
+        {
+            dlog.addText( Logger::ROLE,
+                      __FILE__": catchable. ball dist=%.1f, my_catchable=%.1f",
+                      this->world().ball().distFromSelf(),
+                      ServerParam::i().catchableArea() );
+            this->doCatch();
+            this->setNeckAction( new Neck_TurnToBall() );
+        }
+    else if ( this->world().self().isKickable() )
+    {
+        Body_ClearBall().execute( this );
+        this->setNeckAction( new Neck_ScanField() );
+           
+    }
+    //others
+    else
+    {
+        if ( Bhv_GoalieChaseBall::is_ball_chase_situation( this ) )
+        {
+            Bhv_GoalieChaseBall().execute( this );
+        }
+        else
+        {
+            Bhv_GoalieBasicMove().execute( this );
+        }
+        }
     }
     if (this->world().gameMode().type() == GameMode::PlayOn)
     {
         if(!this->world().self().goalie())
         {
+            dlog.addText(Logger::MARK,"3");
+
             bool kickable = this->world().self().isKickable();
             if (this->world().teammatesFromBall().front()->distFromBall()
             < this->world().ball().distFromSelf())
@@ -234,24 +277,25 @@ SamplePlayer::actionImpl()
             }
             if ( kickable )
             {
+                dlog.addText(Logger::MARK,"4");
+
                 std::cout<<"cycle = "<<this->world().time().cycle()<<" going to offensive"<<std::endl;
-                Bhv_BasicOffensiveKick().execute( this );
+                if(Bhv_BasicOffensiveKick().execute( this ))
+                {
+                    return;
+                }
             }
             else
             {
+                dlog.addText(Logger::MARK,"5");
                 std::cout<<"cycle = "<<this->world().time().cycle()<<" going to basicmove"<<std::endl;
-                Bhv_BasicMove().execute( this );
+                if(Bhv_BasicMove().execute( this ))
+                {
+                    return;
+                }
+
             }  
         }
-    }
-    //
-    // decision Make
-    //
-    if (Bhv_BasicOffensiveKick().execute( this ))
-    {
-        dlog.addText( Logger::TEAM,
-                      __FILE__": bhv_basic_offensive_kick" );
-        return;
     }
 
     //
@@ -259,6 +303,7 @@ SamplePlayer::actionImpl()
     //
     if ( world().gameMode().isPenaltyKickMode() )
     {
+        dlog.addText(Logger::MARK,"6");
         dlog.addText( Logger::TEAM,
                       __FILE__": penalty kick" );
         Bhv_PenaltyKick().execute( this );
@@ -268,6 +313,7 @@ SamplePlayer::actionImpl()
     //
     // other set play mode
     //
+            dlog.addText(Logger::MARK,"7");
     Bhv_SetPlay().execute( this );
 }
 
@@ -589,6 +635,7 @@ SamplePlayer::doPreprocess()
     {
         return true;
     }
+
 
     return false;
 }
